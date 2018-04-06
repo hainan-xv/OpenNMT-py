@@ -190,8 +190,8 @@ def make_base_model(model_opt, fields, gpu, checkpoint=None):
     # Make Generator.
     if not model_opt.copy_attn:
         generator = nn.Sequential(
-            nn.Linear(model_opt.rnn_size, len(fields["tgt"].vocab)),
-            nn.LogSoftmax())
+            nn.Linear(model_opt.rnn_size, len(fields["tgt"].vocab)))
+#            nn.LogSoftmax())
         if model_opt.share_decoder_embeddings:
             generator[0].weight = decoder.embeddings.word_lut.weight
     else:
