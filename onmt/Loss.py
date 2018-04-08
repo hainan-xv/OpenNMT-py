@@ -267,24 +267,6 @@ def shards(state, shard_size, eval=False):
         inputs, grads = zip(*variables)
         torch.autograd.backward(inputs, grads)
 
-class HainanLoss2(nn.Module):
-  def __init__(self, weight=None):
-    super(HainanLoss, self).__init__()
-    self.weight = weight
-#    print(weight)
-
-  def forward(self, input, target):
-    def f(x):
-      mask = (x < 0).type_as(x)
-      return torch.exp(torch.mul(x, mask)) + torch.mul(x + 1, 1 - mask)
-
-    f_input = f(input)
-    row_sums = torch.sum(f_input) # this is the negative part of the objf
-    XC = nn.NLLLoss(self.weight, size_average=False)
-    positive_score = -XC(input, target)
-
-    return -(positive_score + 1 - row_sums)
-
 class HainanLoss(nn.Module):
   def __init__(self, weight=None):
     super(HainanLoss, self).__init__()
@@ -296,28 +278,7 @@ class HainanLoss(nn.Module):
       return torch.exp(torch.mul(x, mask)) + torch.mul(x + 1, 1 - mask)
 
     f_input = f(input) * Variable(self.weight, requires_grad=False)
-    row_sums = torch.sum(f_input, dim=0, keepdim=False) # this is the negative part of the objf
+    row_sums = torch.sum(f_input) # this is the negative part of the objf
     XC = nn.NLLLoss(self.weight, size_average=False)
     positive_score = -XC(input, target)
-    return -(positive_score + 1 - torch.sum(row_sums))
-
-
-#class HainanLoss(nn.Module):
-#  def __init__(self, weight=None):
-#    super(HainanLoss, self).__init__()
-#    self.weight = weight
-#
-#  def forward(self, input, target):
-#    def f(x):
-#      mask = (x < 0).type_as(x)
-#      return torch.exp(torch.mul(x, mask)) + torch.mul(x + 1, 1 - mask)
-#
-#    f_input = f(input)
-#    row_sums = torch.sum(f_input, dim=0, keepdim=False) # this is the negative part of the objf
-#    pdb.set_trace()
-#    row_sums2 = torch.mul(row_sums, self.weight) #.type_as(row_sums)
-#    XC = nn.NLLLoss(self.weight, size_average=False)
-#    positive_score = -XC(input, target)
-#
-#    return -(positive_score + 1 - torch.sum(row_sums))
-
+    return -(positive_score + 1 - row_sums)
