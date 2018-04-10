@@ -176,7 +176,7 @@ class NMTLossCompute(LossComputeBase):
             weight[self.padding_idx] = 0
 #            weight.cuda()
 #            self.criterion = nn.NLLLoss(weight, size_average=False)
-            self.criterion = HainanLoss(weight.cuda(), self.padding_idx)
+            self.criterion = HainanLoss(weight.cuda())
         self.confidence = 1.0 - label_smoothing
 
     def _make_shard_state(self, batch, output, range_, attns=None):
@@ -267,12 +267,34 @@ def shards(state, shard_size, eval=False):
         inputs, grads = zip(*variables)
         torch.autograd.backward(inputs, grads)
 
+#class HainanLoss(nn.Module):
+#  def __init__(self, weight=None, padding_idx=-1):
+#    super(HainanLoss, self).__init__()
+#    self.weight = weight
+#    self.padding_idx = padding_idx
+#    self.XC = nn.NLLLoss(self.weight, size_average=False)
+#
+#  def forward(self, input, target):
+#    def f(x):
+##      mask = (x < 0).type_as(x)
+##      return torch.exp(torch.mul(x, mask)) + torch.mul(x + 1, 1 - mask)
+#      return torch.exp(x)
+#
+#    input = input - 10.0
+#    f_input = f(input) * Variable(self.weight, requires_grad=False)
+#    mask = (target != self.padding_idx).type_as(input)
+#
+#    row_sums = torch.sum(f_input, dim=1)
+#    all_sum = row_sums.dot(mask)
+#    positive_score = -self.XC(input, target)
+#    return -(positive_score + 1 - all_sum)
+
 class HainanLoss(nn.Module):
   def __init__(self, weight=None, padding_idx=-1):
     super(HainanLoss, self).__init__()
     self.weight = weight
-    self.padding_idx = padding_idx
-    self.XC = nn.NLLLoss(self.weight, size_average=False)
+    self.positive = nn.NLLLoss(self.weight, size_average=False)
+    self.cross_ent = nn.CrossEntropyLoss(self.weight, size_average=False)
 
   def forward(self, input, target):
     def f(x):
@@ -281,11 +303,8 @@ class HainanLoss(nn.Module):
       return torch.exp(x)
 
     input = input - 10.0
-    f_input = f(input) #* Variable(self.weight, requires_grad=False)
-    mask = (target != self.padding_idx).type_as(input)
-
-    row_sums = torch.sum(f_input, dim=1)
-    all_sum = row_sums.dot(mask)
-    positive_score = -self.XC(input, target)
-    return -(positive_score + 1 - all_sum)
-
+    positive_score = -self.positive(input, target)
+    positive_minus_negative = -self.cross_ent(input, target)
+    negative = positive_score - positive_minus_negative
+    new_negative = f(negative)
+    return -(positive_score + 1 - new_negative)
