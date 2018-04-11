@@ -1,7 +1,6 @@
 #!/bin/bash
 
-
-stage=2
+stage=3
 
 onmtdir=/export/b05/hxu/OpenNMT-py
 datadir=/export/b05/hxu/MT-data
@@ -35,9 +34,23 @@ if [ $stage -le 2 ]; then
   exit
 fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   model=`ls $dir/model/ | tail -n 1`
-  python translate.py -model $dir/model/$model -src $dir/test.de -output $dir/hyp.bpe.en -replace_unk -verbose -gpu $(free-gpu)
+  echo Using $model
+
+#  python translate.py -model $dir/model/$model -src $dir/test.de -output $dir/hyp.bpe.en -replace_unk -verbose -gpu $(free-gpu)
   cat $dir/hyp.bpe.en | sed -r 's/(@@ )|(@@ ?$)//g' >  $dir/test.en
-  cat $dir/hyp.en | /export/b18/shuoyangd/projects/nmt_rnng/exps/exp3/steps/./.packages/mosesdecoder/VERSIONING_UNSUPPORTED/scripts/generic/multi-bleu.perl $datadir/test.en
+  cat $dir/hyp.en | /export/b18/shuoyangd/projects/nmt_rnng/exps/exp3/steps/./.packages/mosesdecoder/VERSIONING_UNSUPPORTED/scripts/generic/multi-bleu.perl -lc $datadir/test.en
+fi
+sleep 1m
+if [ $stage -le 4 ]; then
+  model=`ls $dir/model/ | tail -n 1`
+  echo Using $model
+
+  cat $datadir/train.de | sed "s= =\n=g" | sort | uniq -c | sort -k1nr | head -n 3000 | awk '{print $2}' > $dir/top_words.de
+  cat $dir/top_words.de | /export/b04/hxu/subword-nmt/apply_bpe.py -c $dir/bpe.mdl > $dir/top_words.bpe.de
+
+  python translate.py -model $dir/model/$model -src $dir/top_words.bpe.de -output $dir/top_words.bpe.en -replace_unk -verbose -gpu $(free-gpu)
+  cat $dir/top_words.bpe.en | sed -r 's/(@@ )|(@@ ?$)//g' >  $dir/top_words.en
+#  cat $dir/hyp.en | /export/b18/shuoyangd/projects/nmt_rnng/exps/exp3/steps/./.packages/mosesdecoder/VERSIONING_UNSUPPORTED/scripts/generic/multi-bleu.perl $datadir/test.en
 fi
