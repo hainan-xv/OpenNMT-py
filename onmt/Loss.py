@@ -12,6 +12,7 @@ from torch.autograd import Variable
 import onmt
 import onmt.io
 
+#import pdb
 
 class LossComputeBase(nn.Module):
     """
@@ -177,12 +178,20 @@ class NMTLossCompute(LossComputeBase):
         self.confidence = 1.0 - label_smoothing
 
     def _make_shard_state(self, batch, output, range_, attns=None):
-        return {
-            "output": output,
-            "target": batch.tgt[range_[0] + 1: range_[1]],
-        }
+        if attns==None:
+          return {
+              "output": output,
+              "target": batch.tgt[range_[0] + 1: range_[1]],
+          }
+        else:
+          return {
+              "output": output,
+              "target": batch.tgt[range_[0] + 1: range_[1]],
+              "entropy": attns["entropy"]
+          }
 
-    def _compute_loss(self, batch, output, target):
+
+    def _compute_loss(self, batch, output, target, entropy):
         scores = self.generator(self._bottle(output))
 
         gtruth = target.view(-1)
@@ -206,7 +215,9 @@ class NMTLossCompute(LossComputeBase):
 
         stats = self._stats(loss_data, scores.data, target.view(-1).data)
 
-        return loss, stats
+#        print ("loss is ", loss, entropy)
+#        return loss, stats
+        return loss + 0.1 * torch.sum(entropy), stats
 
 
 def filter_shard_state(state, requires_grad=True, volatile=False):

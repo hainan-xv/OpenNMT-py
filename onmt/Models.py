@@ -477,6 +477,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             attns["copy"] = []
         if self._coverage:
             attns["coverage"] = []
+        attns["entropy"] = []
 
         emb = self.embeddings(tgt)
         assert emb.dim() == 3  # len x batch x embedding_dim
@@ -485,6 +486,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
         coverage = state.coverage.squeeze(0) \
             if state.coverage is not None else None
 
+#        entropy_loss = 0
         # Input feed concatenates hidden state with
         # input at every time step.
         for i, emb_t in enumerate(emb.split(1)):
@@ -492,10 +494,11 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             decoder_input = torch.cat([emb_t, input_feed], 1)
 
             rnn_output, hidden = self.rnn(decoder_input, hidden)
-            decoder_output, p_attn = self.attn(
+            decoder_output, p_attn, entropy = self.attn(
                 rnn_output,
                 memory_bank.transpose(0, 1),
                 memory_lengths=memory_lengths)
+#            entropy_loss = entropy_loss + entropy
             if self.context_gate is not None:
                 # TODO: context gate should be employed
                 # instead of second RNN transform.
@@ -507,6 +510,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
 
             decoder_outputs += [decoder_output]
             attns["std"] += [p_attn]
+            attns["entropy"] += [entropy]
 
             # Update the coverage attention.
             if self._coverage:

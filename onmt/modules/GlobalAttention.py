@@ -78,6 +78,7 @@ class GlobalAttention(nn.Module):
 
         self.sm = nn.Softmax()
         self.tanh = nn.Tanh()
+#        self.entropy = 0
 
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
@@ -176,6 +177,10 @@ class GlobalAttention(nn.Module):
         align_vectors = self.sm(align.view(batch*targetL, sourceL))
         align_vectors = align_vectors.view(batch, targetL, sourceL)
 
+        log_ps = -torch.log(align_vectors + 0.0000000000001)
+        p_log_ps = align_vectors * log_ps
+        entropy = torch.sum(p_log_ps)
+
         # each context vector c_t is the weighted average
         # over all the source hidden states
         c = torch.bmm(align_vectors, memory_bank)
@@ -211,4 +216,4 @@ class GlobalAttention(nn.Module):
             aeq(batch, batch_)
             aeq(sourceL, sourceL_)
 
-        return attn_h, align_vectors
+        return attn_h, align_vectors, entropy
