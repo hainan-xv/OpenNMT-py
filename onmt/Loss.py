@@ -180,9 +180,10 @@ class NMTLossCompute(LossComputeBase):
         return {
             "output": output,
             "target": batch.tgt[range_[0] + 1: range_[1]],
+            "hainan": attns["std"]
         }
 
-    def _compute_loss(self, batch, output, target):
+    def _compute_loss(self, batch, output, target, hainan):
         scores = self.generator(self._bottle(output))
 
         gtruth = target.view(-1)
@@ -206,7 +207,13 @@ class NMTLossCompute(LossComputeBase):
 
         stats = self._stats(loss_data, scores.data, target.view(-1).data)
 
-        return loss, stats
+#        print ("sum is ", torch.sum(hainan, dim=1))
+#        print ("sum - 1 is ", torch.sum(hainan, dim=1) - 1)
+        diff = torch.sum(hainan, dim=1) - 1
+        norm = torch.norm(diff)
+        print ("norm is ", norm)
+
+        return loss + norm, stats
 
 
 def filter_shard_state(state, requires_grad=True, volatile=False):
