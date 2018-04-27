@@ -293,20 +293,16 @@ class HainanLoss(nn.Module):
   def __init__(self, weight=None):
     super(HainanLoss, self).__init__()
     self.weight = weight
-    self.positive = nn.NLLLoss(self.weight, size_average=False, reduce=False)             # TODO(hxu) use average-reduce and compute denominator that way
-    self.cross_ent = nn.CrossEntropyLoss(self.weight, size_average=False, reduce=False)
+    self.positive = nn.NLLLoss(self.weight, size_average=False, reduce=True)
 
   def trans(self, x):
-    x = x - 10.0
     mask = (x < 0).type_as(x)
     ret = torch.mul(x, mask) + torch.log(torch.mul(x, 1 - mask) + 1)
     return ret
-#    return torch.log(torch.exp(torch.mul(x, mask)) + torch.mul(x + 1, 1 - mask))
 
   def forward(self, input, target):
     input = self.trans(input)
     positive_score = -self.positive(input, target)
-    positive_minus_negative = -self.cross_ent(input, target)
-    negative = positive_score - positive_minus_negative
-    new_negative = torch.sum(torch.exp(negative))
-    return -(torch.sum(positive_score) + 1 - new_negative)
+    sum_exp = torch.sum(torch.exp(input))
+    losses = positive_score + target.size()[0] - sum_exp
+    return -losses

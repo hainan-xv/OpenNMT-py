@@ -217,6 +217,7 @@ def make_base_model(model_opt, fields, gpu, checkpoint=None):
             for p in generator.parameters():
                 if p.dim() > 1:
                     xavier_uniform(p)
+        generator[0].bias.data.uniform_(-11.0, -10.0)
 
         if hasattr(model.encoder, 'embeddings'):
             model.encoder.embeddings.load_pretrained_vectors(
