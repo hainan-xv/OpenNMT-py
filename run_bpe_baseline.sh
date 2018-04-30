@@ -23,6 +23,7 @@ if [ $stage -le 1 ]; then
 
 fi
 
+
 if [ $stage -le 2 ]; then
   echo step-2, training
   python preprocess.py -train_src $dir/train.de -train_tgt $dir/train.en -valid_src $dir/dev.de -valid_tgt $dir/dev.en -save_data $dir/onmt_data

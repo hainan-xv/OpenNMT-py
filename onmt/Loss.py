@@ -176,7 +176,7 @@ class NMTLossCompute(LossComputeBase):
             weight[self.padding_idx] = 0
 #            weight.cuda()
 #            self.criterion = nn.NLLLoss(weight, size_average=False)
-            self.criterion = HainanLoss(weight.cuda())
+            self.criterion = HainanLoss(self.padding_idx, weight.cuda())
         self.confidence = 1.0 - label_smoothing
 
     def _make_shard_state(self, batch, output, range_, attns=None):
@@ -290,8 +290,9 @@ def shards(state, shard_size, eval=False):
 #    return -(positive_score + 1 - all_sum)
 
 class HainanLoss(nn.Module):
-  def __init__(self, weight=None):
+  def __init__(self, padding_idx, weight=None):
     super(HainanLoss, self).__init__()
+    self.padding_idx = padding_idx
     self.weight = weight
     self.positive = nn.NLLLoss(self.weight, size_average=False, reduce=True)
 
@@ -303,6 +304,8 @@ class HainanLoss(nn.Module):
   def forward(self, input, target):
     input = self.trans(input)
     positive_score = -self.positive(input, target)
-    sum_exp = torch.sum(torch.exp(input))
-    losses = positive_score + target.size()[0] - sum_exp
+    mask = (target != self.padding_idx).type_as(input)
+    sum_exp = torch.sum(torch.exp(input), dim=1) * mask
+    losses = positive_score + torch.sum(mask) - torch.sum(sum_exp)
+#    losses = positive_score + target.size()[0] - torch.sum(sum_exp)
     return -losses
