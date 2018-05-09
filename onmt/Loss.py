@@ -173,7 +173,7 @@ class NMTLossCompute(LossComputeBase):
         else:
             weight = torch.ones(len(tgt_vocab))
             weight[self.padding_idx] = 0
-            self.criterion = nn.NLLLoss(weight, size_average=False)
+            self.criterion = nn.NLLLoss(weight, size_average=False, reduce=False)
         self.confidence = 1.0 - label_smoothing
 
     def _make_shard_state(self, batch, output, range_, attns=None):
@@ -197,6 +197,12 @@ class NMTLossCompute(LossComputeBase):
                 tmp_.index_fill_(0, mask, 0)
             gtruth = Variable(tmp_, requires_grad=False)
         loss = self.criterion(scores, gtruth)
+
+
+        tanh = torch.nn.Tanh()
+        loss_weight = tanh(loss)
+        loss = loss * loss_weight
+        loss = torch.sum(loss)
         if self.confidence < 1:
             # Default: report smoothed ppl.
             # loss_data = -log_likelihood.sum(0)
