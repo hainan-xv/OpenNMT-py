@@ -103,7 +103,7 @@ class RNNDecoderBase(nn.Module):
             self._copy = True
         self._reuse_copy_attn = reuse_copy_attn
 
-    def forward(self, tgt, memory_bank, state, memory_lengths=None,
+    def forward(self, tgt, memory_bank, memory_bank2, state, memory_lengths=None,
                 step=None):
         """
         Args:
@@ -133,7 +133,7 @@ class RNNDecoderBase(nn.Module):
 
         # Run the forward pass of the RNN.
         decoder_final, decoder_outputs, attns = self._run_forward_pass(
-            tgt, memory_bank, state, memory_lengths=memory_lengths)
+            tgt, memory_bank, memory_bank2, state, memory_lengths=memory_lengths)
 
         # Update the state with the result.
         final_output = decoder_outputs[-1]
@@ -191,7 +191,7 @@ class StdRNNDecoder(RNNDecoderBase):
     or `copy_attn` support.
     """
 
-    def _run_forward_pass(self, tgt, memory_bank, state, memory_lengths=None):
+    def _run_forward_pass(self, tgt, memory_bank, memory_bank2, state, memory_lengths=None):
         """
         Private helper for running the specific RNN forward pass.
         Must be overriden by all subclasses.
@@ -235,6 +235,7 @@ class StdRNNDecoder(RNNDecoderBase):
         decoder_outputs, p_attn = self.attn(
             rnn_output.transpose(0, 1).contiguous(),
             memory_bank.transpose(0, 1),
+            memory_bank2.transpose(0, 1),
             memory_lengths=memory_lengths
         )
         attns["std"] = p_attn
@@ -291,7 +292,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
           G --> H
     """
 
-    def _run_forward_pass(self, tgt, memory_bank, state, memory_lengths=None):
+    def _run_forward_pass(self, tgt, memory_bank, memory_bank2, state, memory_lengths=None):
         """
         See StdRNNDecoder._run_forward_pass() for description
         of arguments and return values.
@@ -328,6 +329,7 @@ class InputFeedRNNDecoder(RNNDecoderBase):
             decoder_output, p_attn = self.attn(
                 rnn_output,
                 memory_bank.transpose(0, 1),
+                memory_bank2.transpose(0, 1),
                 memory_lengths=memory_lengths)
             if self.context_gate is not None:
                 # TODO: context gate should be employed

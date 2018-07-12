@@ -79,6 +79,12 @@ class GlobalAttention(nn.Module):
             self.linear_context = nn.Linear(dim, dim, bias=False)
             self.linear_query = nn.Linear(dim, dim, bias=True)
             self.v = nn.Linear(dim, 1, bias=False)
+
+        self.hainan_linear = nn.Linear(dim, 1)
+        self.hainan_linear2 = nn.Linear(dim, dim, bias=False)
+
+#        self.hainan_final = nn.Linear(dim, 1)
+
         # mlp wants it with bias
         out_bias = self.attn_type == "mlp"
         self.linear_out = nn.Linear(dim * 2, dim, bias=out_bias)
@@ -88,6 +94,8 @@ class GlobalAttention(nn.Module):
 
         if coverage:
             self.linear_cover = nn.Linear(1, dim, bias=False)
+
+        self.counter = 0
 
     def score(self, h_t, h_s):
         """
@@ -132,7 +140,36 @@ class GlobalAttention(nn.Module):
 
             return self.v(wquh.view(-1, dim)).view(tgt_batch, tgt_len, src_len)
 
-    def forward(self, source, memory_bank, memory_lengths=None, coverage=None):
+    def score2(self, h_t, h_s):
+        """
+        Args:
+          h_t (`FloatTensor`): sequence of queries `[batch x tgt_len x dim]`
+          h_s (`FloatTensor`): sequence of sources `[batch x src_len x dim]`
+
+        Returns:
+          :obj:`FloatTensor`:
+           raw attention scores (unnormalized) for each src index
+          `[batch x tgt_len x src_len]`
+
+        """
+
+        # Check input sizes
+        src_batch, src_len, src_dim = h_s.size()
+        tgt_batch, tgt_len, tgt_dim = h_t.size()
+        aeq(src_batch, tgt_batch)
+        aeq(src_dim, tgt_dim)
+        aeq(src_len, tgt_len)
+
+        v = torch.sigmoid(self.hainan_linear(h_t) + self.hainan_linear2(h_s))
+#        v = self.hainan_final(v)
+##        if self.counter % 100 == 0:
+##            print ("v is", v[0][0])
+#        v = torch.sigmoid(v)
+
+        return v
+
+
+    def forward(self, source, memory_bank, memory_bank2, memory_lengths=None, coverage=None):
         """
 
         Args:
@@ -173,6 +210,20 @@ class GlobalAttention(nn.Module):
 
         # compute attention scores, as in Luong et al.
         align = self.score(source, memory_bank)
+#        print (source.shape, memory_bank.shape)
+
+        weight = self.score2(memory_bank, memory_bank2)
+
+        if (self.counter % 1000 == 0):
+#            print ("shape is", static.shape)
+            print ("weight is", weight.min(), weight.max())
+#            print (static)
+
+        merged = memory_bank2 + weight * memory_bank
+
+#        if (self.counter % 100 == 0):
+#            print (merged - memory_bank2)
+        self.counter = self.counter + 1
 
         if memory_lengths is not None:
             mask = sequence_mask(memory_lengths, max_len=align.size(-1))
@@ -185,7 +236,8 @@ class GlobalAttention(nn.Module):
 
         # each context vector c_t is the weighted average
         # over all the source hidden states
-        c = torch.bmm(align_vectors, memory_bank)
+        c = torch.bmm(align_vectors, merged)
+
 
         # concatenate
         concat_c = torch.cat([c, source], 2).view(batch*target_l, dim*2)
@@ -219,3 +271,4 @@ class GlobalAttention(nn.Module):
             aeq(source_l, source_l_)
 
         return attn_h, align_vectors
+

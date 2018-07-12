@@ -43,6 +43,14 @@ class RNNEncoder(EncoderBase):
                         dropout=dropout,
                         bidirectional=bidirectional)
 
+        self.dnn, _ = \
+            rnn_factory("DNN",
+                        input_size=embeddings.embedding_size,
+                        hidden_size=hidden_size,
+                        num_layers=num_layers,
+                        dropout=dropout,
+                        bidirectional=bidirectional)
+
         # Initialize the bridge layer
         self.use_bridge = use_bridge
         if self.use_bridge:
@@ -64,13 +72,18 @@ class RNNEncoder(EncoderBase):
             packed_emb = pack(emb, lengths)
 
         memory_bank, encoder_final = self.rnn(packed_emb)
+        memory_bank2 = self.dnn(emb)
+
 
         if lengths is not None and not self.no_pack_padded_seq:
             memory_bank = unpack(memory_bank)[0]
 
+#        print(memory_bank.shape)
+#        print(memory_bank2.shape)
+
         if self.use_bridge:
             encoder_final = self._bridge(encoder_final)
-        return encoder_final, memory_bank
+        return encoder_final, memory_bank, memory_bank2
 
     def _initialize_bridge(self, rnn_type,
                            hidden_size,

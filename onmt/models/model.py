@@ -42,11 +42,15 @@ class NMTModel(nn.Module):
         """
         tgt = tgt[:-1]  # exclude last target from inputs
 
-        enc_final, memory_bank = self.encoder(src, lengths)
+        enc_final, memory_bank, memory_bank2 = self.encoder(src, lengths)
+
+        # it seems memory_bank isn't used here
         enc_state = \
             self.decoder.init_decoder_state(src, memory_bank, enc_final)
+
+
         decoder_outputs, dec_state, attns = \
-            self.decoder(tgt, memory_bank,
+            self.decoder(tgt, memory_bank, memory_bank2,
                          enc_state if dec_state is None
                          else dec_state,
                          memory_lengths=lengths)

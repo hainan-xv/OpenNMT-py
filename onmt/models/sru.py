@@ -650,3 +650,64 @@ class SRU(nn.Module):
             return prevx, fh
         else:
             return prevx
+
+class DNN(nn.Module):
+    """
+    Implementation of "Training RNNs as Fast as CNNs"
+    :cite:`DBLP:journals/corr/abs-1709-02755`
+
+    TODO: turn to pytorch's implementation when it is available.
+
+    This implementation is adpoted from the author of the paper:
+    https://github.com/taolei87/sru/blob/master/cuda_functional.py.
+
+    Args:
+      input_size (int): input to model
+      hidden_size (int): hidden dimension
+      num_layers (int): number of layers
+      dropout (float): dropout to use (stacked)
+      rnn_dropout (float): dropout to use (recurrent)
+      bidirectional (bool): bidirectional
+      use_tanh (bool): activation
+      use_relu (bool): activation
+
+    """
+
+    def __init__(self, input_size, hidden_size,
+                 num_layers=2, dropout=0, rnn_dropout=0,
+                 bidirectional=False, use_tanh=1, use_relu=0):
+        super(DNN, self).__init__()
+        self.n_in = input_size
+        self.n_out = hidden_size
+        self.depth = num_layers
+        self.dropout = dropout
+        self.rnn_dropout = rnn_dropout
+        self.rnn_lst = []
+        self.out_size = hidden_size * 2 if bidirectional else hidden_size
+        self.num_layers = num_layers
+
+        self.drop = nn.Dropout(p=dropout)
+
+        for i in range(num_layers):
+            in_size = self.n_in if i == 0 else self.out_size
+            out_size = self.n_out
+            cell = nn.Linear(in_size, out_size)
+            self.rnn_lst.append(cell.cuda())
+
+    def forward(self, input):
+        assert input.dim() == 3  # (len, batch, n_in)
+        x = input
+
+#        tanh = nn.Tanh()
+#        softmax = nn.Softmax()
+#
+#        for i in range(self.num_layers):
+#            x = self.rnn_lst[i](x)
+#            if i != self.num_layers:
+#                x = tanh(x)
+#                x = self.drop(x)
+#            else:
+#                x = softmax(x)
+#                x = self.drop(x)
+            
+        return x
