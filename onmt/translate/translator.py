@@ -517,7 +517,9 @@ class Translator(object):
         if data_type == 'text':
             _, src_lengths = batch.src
 
-        enc_states, memory_bank = self.model.encoder(src, src_lengths)
+        enc_states, memory_bank, memory_bank2 = self.model.encoder(src, src_lengths)
+#        print (memory_bank.shape)
+#        print (memory_bank)
         dec_states = self.model.decoder.init_decoder_state(
             src, memory_bank, enc_states)
 
@@ -530,6 +532,7 @@ class Translator(object):
         src_map = rvar(batch.src_map.data) \
             if data_type == 'text' and self.copy_attn else None
         memory_bank = rvar(memory_bank.data)
+        memory_bank2 = rvar(memory_bank2.data)
         memory_lengths = src_lengths.repeat(beam_size)
         dec_states.repeat_beam_size_times(beam_size)
 
@@ -555,7 +558,7 @@ class Translator(object):
 
             # Run one step.
             dec_out, dec_states, attn = self.model.decoder(
-                inp, memory_bank, dec_states, memory_lengths=memory_lengths,
+                inp, memory_bank, memory_bank2, dec_states, memory_lengths=memory_lengths,
                 step=i)
 
             dec_out = dec_out.squeeze(0)

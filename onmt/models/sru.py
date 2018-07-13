@@ -695,7 +695,8 @@ class DNN(nn.Module):
                 cell = nn.Linear(in_size, out_size)
             else:
                 cell = nn.Linear(out_size, out_size)
-            self.rnn_lst.append(cell.cuda())
+            self.rnn_lst.append(cell)
+#            self.rnn_lst.append(cell.cuda())
 
     def forward(self, input):
         assert input.dim() == 3  # (len, batch, n_in)

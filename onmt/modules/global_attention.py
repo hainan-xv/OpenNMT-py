@@ -168,7 +168,6 @@ class GlobalAttention(nn.Module):
 
         return v
 
-
     def forward(self, source, memory_bank, memory_bank2, memory_lengths=None, coverage=None):
         """
 
@@ -214,10 +213,11 @@ class GlobalAttention(nn.Module):
 
         weight = self.score2(memory_bank, memory_bank2)
 
-        if (self.counter % 1000 == 0):
+#        if (self.counter % 1 == 0):
 #            print ("shape is", static.shape)
-            print ("weight is", weight.min(), weight.max())
-#            print (static)
+#            print ("weight is", weight.min(), weight.max())
+#            print (weight)
+#            print (memory_bank)
 
         merged = memory_bank2 + weight * memory_bank
 
