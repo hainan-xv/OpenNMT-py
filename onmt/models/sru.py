@@ -690,24 +690,28 @@ class DNN(nn.Module):
 
         for i in range(num_layers):
             in_size = self.n_in if i == 0 else self.out_size
-            out_size = self.n_out
-            cell = nn.Linear(in_size, out_size)
+            out_size = self.out_size
+            if i == 0:
+                cell = nn.Linear(in_size, out_size)
+            else:
+                cell = nn.Linear(out_size, out_size)
             self.rnn_lst.append(cell.cuda())
 
     def forward(self, input):
         assert input.dim() == 3  # (len, batch, n_in)
+
         x = input
 
-#        tanh = nn.Tanh()
-#        softmax = nn.Softmax()
-#
-#        for i in range(self.num_layers):
-#            x = self.rnn_lst[i](x)
-#            if i != self.num_layers:
-#                x = tanh(x)
-#                x = self.drop(x)
-#            else:
-#                x = softmax(x)
-#                x = self.drop(x)
+        tanh = nn.Tanh()
+        softmax = nn.Softmax()
+
+        for i in range(self.num_layers):
+            x = self.rnn_lst[i](x)
+            if i != self.num_layers:
+                x = tanh(x)
+                x = self.drop(x)
+            else:
+                x = softmax(x)
+                x = self.drop(x)
             
         return x
